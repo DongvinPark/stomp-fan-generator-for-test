@@ -1,0 +1,6 @@
+spring:
+  threads:
+    virtual:
+      enabled: true  # 스프링부트 3.2 버전부터 virtual thread 설정이 먹힌다.
+  main:
+    web-application-type: none # 서버가 아니므로 톰캣을 띄우지 않는다.
