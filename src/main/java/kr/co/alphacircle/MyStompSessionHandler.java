@@ -13,47 +13,58 @@ import java.util.Map;
 
 public class MyStompSessionHandler extends StompSessionHandlerAdapter {
   private final int fanId;
-  // 수동 파싱을 위한 ObjectMapper (static으로 공유해서 가볍게 사용)
+  private final int totalFanCount;
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
-  public MyStompSessionHandler(int fanId) { this.fanId = fanId; }
+  public MyStompSessionHandler(int fanId, int totalFanCount) {
+    this.fanId = fanId;
+    this.totalFanCount = totalFanCount;
+  }
 
   @Override
   public void afterConnected(StompSession session, StompHeaders connectedHeaders) {
-    System.out.println("!!! [Fan-" + fanId + "] 연결 성공! 구독 시작합니다.");
     session.subscribe("/topic/greetings", this);
   }
 
   @Override
   public Type getPayloadType(StompHeaders headers) {
-    // 이제 무조건 String으로 받습니다.
     return String.class;
   }
 
   @Override
   public void handleFrame(StompHeaders headers, Object payload) {
     try {
-      // payload를 String으로 캐스팅한 뒤 직접 Map으로 파싱
       String rawJson = (String) payload;
       Map<String, Object> content = objectMapper.readValue(rawJson, Map.class);
 
-      String msg = (String) content.get("content");
-      String sentTimeStr = (String) content.get("clientSendTime");
+      String clientSendTimeStr = (String) content.get("clientSendTime");
+      String serverSendTimeStr = (String) content.get("serverSendTime");
+      Instant now = Instant.now();
 
-      if (sentTimeStr != null) {
-        Instant sentTime = Instant.parse(sentTimeStr);
-        Instant receivedTime = Instant.now();
-        long delay = Duration.between(sentTime, receivedTime).toMillis();
+      if (clientSendTimeStr != null && serverSendTimeStr != null) {
+        Instant artistSendTime = Instant.parse(clientSendTimeStr);
+        Instant serverSendTime = Instant.parse(serverSendTimeStr);
 
-        System.out.println("[Fan-" + fanId + "] 메시지: " + msg + " | 지연시간: " + delay + "ms");
+        // 1. 나노초 단위로 차이를 구한 뒤 1,000,000으로 나눠 소수점 밀리초 생성
+        double totalDelay = Duration.between(artistSendTime, now).toNanos() / 1_000_000.0;
+        double serverToFanDelay = Duration.between(serverSendTime, now).toNanos() / 1_000_000.0;
+        double artistToServerDelay = Duration.between(artistSendTime, serverSendTime).toNanos() / 1_000_000.0;
+
+        // 2. 결과 기록 (Double 타입으로 소수점 유지)
+        Main.delayResults.add(serverToFanDelay);
+        int current = Main.collectedCount.incrementAndGet();
+
+        // 3. 로그 출력 (%.3f 포맷을 사용해 111.111ms 형태로 출력)
+        if (fanId % 100 == 0) {
+          System.out.printf(
+              "[Fan-%d] 이티스트 -> 팬: %.3fms | 아티스트 -> 서버: %.3fms | 서버 -> 팬: %.3fms %n",
+              fanId, totalDelay, artistToServerDelay, serverToFanDelay
+          );
+        }
       }
     } catch (Exception e) {
-      System.err.println("[Fan-" + fanId + "] 파싱 에러: " + e.getMessage());
+      System.err.println("[Fan-" + fanId + "] Error: " + e.getMessage());
     }
   }
 
-  @Override
-  public void handleException(StompSession session, StompCommand command, StompHeaders headers, byte[] payload, Throwable exception) {
-    System.err.println("!!! STOMP 에러 발생: " + exception.getMessage());
-  }
 }// end of Handler class
