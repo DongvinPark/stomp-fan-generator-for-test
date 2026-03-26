@@ -47,3 +47,8 @@ dependencies {
 test {
     useJUnitPlatform()
 }
+
+// build.gradle 하단에 추가
+tasks.named('bootJar') {
+    archiveFileName = 'fan.jar' // 빌드 결과물 이름을 fan.jar로 고정
+}
