@@ -5,10 +5,12 @@ import org.springframework.web.socket.client.WebSocketClient;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -24,7 +26,9 @@ public class Main {
   public static final AtomicInteger collectedCount = new AtomicInteger(0);
 
   public static void main(String[] args) throws InterruptedException {
-    if (args.length >= 2) {
+    if(args.length == 1){
+      fanCount = Integer.parseInt(args[0]);
+    } else if (args.length >= 2) {
       fanCount = Integer.parseInt(args[0]);
       targetUrl = args[1];
     }
@@ -75,8 +79,18 @@ public class Main {
   private static synchronized void saveResults() {
     System.out.println(">>> [알림] 모든 데이터 수집 완료! result.log 파일 생성 중...");
 
+    // LocalDateTime.now() 를 그냥 쓰면 윈도우 환경에서는 ':' 문자 때문에 파일 저장에 실패한다.
+    String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"));
+
+    String windowOsDir = "C:\\dev\\stomp-test-result" + File.separator + "result_" + timestamp + "_cnt_" + fanCount +".log";
+    String unixDir = "result_" + timestamp + "_cnt_" + fanCount +".log";
     try (PrintWriter out = new PrintWriter(
-        new FileWriter("result_" + LocalDateTime.now() + ".log"))
+        new FileWriter(
+            // TODO : 테스트 환경에 맞춰서 둘 중 하나를 주석해제 하면 된다.
+            windowOsDir
+            //unixDir
+        )
+    )
     ) {
       out.println("Index,Server To Fan Delay(ms)");
 
