@@ -29,7 +29,6 @@ dependencies {
     // STOMP 클라이언트 기능을 위해 필요
     // 1. Spring Messaging & WebSocket (인터페이스 역할)
     implementation 'org.springframework:spring-messaging:6.1.5'
-    implementation 'org.springframework:spring-websocket:6.1.5'
 
     // 2. Jakarta WebSocket API (인터페이스 정의)
     implementation 'jakarta.websocket:jakarta.websocket-api:2.1.1'
