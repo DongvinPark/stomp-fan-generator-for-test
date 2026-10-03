@@ -31,10 +31,10 @@ dependencies {
     implementation 'org.springframework:spring-messaging:6.1.5'
     implementation 'org.springframework:spring-websocket:6.1.5'
 
-    // 2. Jakarta WebSocket API (인터페이스 정의) - 이게 없어서 에러가 났습니다!
+    // 2. Jakarta WebSocket API (인터페이스 정의)
     implementation 'jakarta.websocket:jakarta.websocket-api:2.1.1'
 
-    // 3. Tomcat WebSocket (실제 구현체) - 클라이언트지만 엔진이 필요합니다.
+    // 3. Tomcat WebSocket (실제 구현체) - 클라이언트지만 엔진이 필요.
     implementation 'org.apache.tomcat.embed:tomcat-embed-websocket:10.1.19'
 
     // 4. JSON 처리를 위한 Jackson
