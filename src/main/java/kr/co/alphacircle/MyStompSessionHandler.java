@@ -21,9 +21,48 @@ public class MyStompSessionHandler extends StompSessionHandlerAdapter {
     this.totalFanCount = totalFanCount;
   }
 
+  // 연결 성공 여부 검증용
   @Override
   public void afterConnected(StompSession session, StompHeaders connectedHeaders) {
+    System.out.printf(
+        "[Fan-%d] STOMP CONNECTED: sessionId=%s, headers=%s%n",
+        fanId,
+        session.getSessionId(),
+        connectedHeaders
+    );
     session.subscribe("/topic/greetings", this);
+  }
+
+  @Override
+  public void handleTransportError(
+      StompSession session,
+      Throwable exception
+  ) {
+    System.out.printf(
+        "[Fan-%d] STOMP transport error: %s%n",
+        fanId,
+        exception
+    );
+
+    exception.printStackTrace();
+  }
+
+  @Override
+  public void handleException(
+      StompSession session,
+      StompCommand command,
+      StompHeaders headers,
+      byte[] payload,
+      Throwable exception
+  ) {
+    System.out.printf(
+        "[Fan-%d] STOMP handler error: command=%s, error=%s%n",
+        fanId,
+        command,
+        exception
+    );
+
+    exception.printStackTrace();
   }
 
   @Override
@@ -33,37 +72,76 @@ public class MyStompSessionHandler extends StompSessionHandlerAdapter {
 
   @Override
   public void handleFrame(StompHeaders headers, Object payload) {
+    // 1. STOMP 메시지 수신 여부부터 확인
+    System.out.printf(
+        "[Fan-%d] STOMP FRAME RECEIVED: headers=%s, payloadType=%s%n",
+        fanId,
+        headers,
+        payload == null ? "null" : payload.getClass().getName()
+    );
+
     try {
       String rawJson = (String) payload;
-      Map<String, Object> content = objectMapper.readValue(rawJson, Map.class);
 
-      String clientSendTimeStr = (String) content.get("clientSendTime");
-      String serverSendTimeStr = (String) content.get("serverSendTime");
+      // 2. 실제 수신한 메시지 내용 확인
+      System.out.printf(
+          "[Fan-%d] RAW PAYLOAD: %s%n",
+          fanId,
+          rawJson
+      );
+
+      Map<String, Object> content =
+          objectMapper.readValue(rawJson, Map.class);
+
+      String clientSendTimeStr =
+          (String) content.get("clientSendTime");
+      String serverSendTimeStr =
+          (String) content.get("serverSendTime");
+
       Instant now = Instant.now();
 
+      // 3. 기존 지연 시간 측정 로직
       if (clientSendTimeStr != null && serverSendTimeStr != null) {
         Instant artistSendTime = Instant.parse(clientSendTimeStr);
         Instant serverSendTime = Instant.parse(serverSendTimeStr);
 
-        // 1. 나노초 단위로 차이를 구한 뒤 1,000,000으로 나눠 소수점 밀리초 생성
-        double totalDelay = Duration.between(artistSendTime, now).toNanos() / 1_000_000.0;
-        double serverToFanDelay = Duration.between(serverSendTime, now).toNanos() / 1_000_000.0;
-        double artistToServerDelay = Duration.between(artistSendTime, serverSendTime).toNanos() / 1_000_000.0;
+        double totalDelay =
+            Duration.between(artistSendTime, now).toNanos() / 1_000_000.0;
+        double serverToFanDelay =
+            Duration.between(serverSendTime, now).toNanos() / 1_000_000.0;
+        double artistToServerDelay =
+            Duration.between(artistSendTime, serverSendTime).toNanos() / 1_000_000.0;
 
-        // 2. 결과 기록 (Double 타입으로 소수점 유지)
         Main.delayResults.add(serverToFanDelay);
         int current = Main.collectedCount.incrementAndGet();
 
-        // 3. 로그 출력 (%.3f 포맷을 사용해 111.111ms 형태로 출력)
         if (fanId % 100 == 0) {
           System.out.printf(
-              "[Fan-%d] 이티스트 -> 팬: %.3fms | 아티스트 -> 서버: %.3fms | 서버 -> 팬: %.3fms %n",
-              fanId, totalDelay, artistToServerDelay, serverToFanDelay
+              "[Fan-%d] 아티스트 → 팬: %.3fms | " +
+                  "아티스트 → 서버: %.3fms | 서버 → 팬: %.3fms | " +
+                  "수집: %d%n",
+              fanId,
+              totalDelay,
+              artistToServerDelay,
+              serverToFanDelay,
+              current
           );
         }
+      } else {
+        System.out.printf(
+            "[Fan-%d] Missing timestamp: clientSendTime=%s, serverSendTime=%s%n",
+            fanId,
+            clientSendTimeStr,
+            serverSendTimeStr
+        );
       }
     } catch (Exception e) {
-      System.err.println("[Fan-" + fanId + "] Error: " + e.getMessage());
+      System.out.printf(
+          "[Fan-%d] Error processing frame: %s%n",
+          fanId,
+          e
+      );
+      e.printStackTrace();
     }
   }
 

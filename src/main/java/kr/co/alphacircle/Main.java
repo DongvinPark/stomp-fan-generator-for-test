@@ -1,5 +1,6 @@
 package kr.co.alphacircle;
 
+import jakarta.websocket.ClientEndpointConfig;
 import org.springframework.messaging.converter.StringMessageConverter;
 import org.springframework.web.socket.client.WebSocketClient;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
@@ -39,7 +40,7 @@ public class Main {
       int fanId = i;
       Thread.ofVirtual().start(() -> {
         try {
-          WebSocketClient client = new StandardWebSocketClient();
+          StandardWebSocketClient client = new StandardWebSocketClient();
           WebSocketStompClient stompClient = new WebSocketStompClient(client);
           stompClient.setMessageConverter(new StringMessageConverter());
 
