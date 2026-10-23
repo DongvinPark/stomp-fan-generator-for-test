@@ -17,8 +17,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 
 public class Main {
+    private static int fanCount = 1000;
   private static String targetUrl = "ws://localhost:8080/gs-guide-websocket";
-  private static int fanCount = 1000;
+  private static String serverType;
+  private static String osType;
 
   // 1. 대규모 쓰기에 최적화된 비차단(Non-blocking) 큐
   public static final ConcurrentLinkedQueue<Double> delayResults = new ConcurrentLinkedQueue<>();
@@ -27,11 +29,22 @@ public class Main {
   public static final AtomicInteger collectedCount = new AtomicInteger(0);
 
   public static void main(String[] args) throws InterruptedException {
-    if(args.length == 1){
+    if(args.length == 3){
       fanCount = Integer.parseInt(args[0]);
-    } else if (args.length >= 2) {
-      fanCount = Integer.parseInt(args[0]);
-      targetUrl = args[1];
+      serverType = args[1];
+      osType = args[2];
+    } else if(args.length == 4){
+        fanCount = Integer.parseInt(args[0]);
+        targetUrl = args[1];
+        serverType = args[2];
+        osType = args[3];
+    } else {
+        System.out.println("인풋 파라미터가 부족합니다. 다음 중 하나의 형식에 맞게 입력해주세요");
+        System.out.println("로컬 환경 테스트용 명령어");
+        System.out.println("\tjava -jar fan.jar 1000 java window");
+        System.out.println("AWS 환경 테스트용 명령어");
+        System.out.println("\tjava -jar fan.jar 1000 ws://192.168.50.202:8080/gs-guide-websocket java unix");
+        return;
     }
 
     System.out.println(">>> 테스트 시작: " + fanCount + " fans / " + targetUrl);
@@ -83,37 +96,53 @@ public class Main {
     // LocalDateTime.now() 를 그냥 쓰면 윈도우 환경에서는 ':' 문자 때문에 파일 저장에 실패한다.
     String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"));
 
-    String windowOsDir = "C:\\dev\\stomp-test-result" + File.separator + "result_" + timestamp + "_cnt_" + fanCount +".log";
-    String unixDir = "result_" + timestamp + "_cnt_" + fanCount +".log";
-    try (PrintWriter out = new PrintWriter(
-        new FileWriter(
-            // TODO : 테스트 환경에 맞춰서 둘 중 하나를 주석해제 하면 된다.
-            windowOsDir
-            //unixDir
-        )
-    )
-    ) {
+    String windowOsDir
+        = "C:\\dev\\stomp-test-result" + File.separator
+            + (serverType.equals("java") ? "java" : "cpp") + "_result_" + timestamp + "_cnt_" + fanCount +".log";
+    String unixDir
+        = (serverType.equals("java") ? "java" : "cpp") + "_result_" + timestamp + "_cnt_" + fanCount +".log";
+
+    String finalDir;
+    if(osType.equals("window")){
+        finalDir = windowOsDir;
+    } else if(osType.equals("unix")) {
+        finalDir = unixDir;
+    } else {
+        throw new RuntimeException("지원하지 않는 운영체제입니다! : " + osType);
+    }
+
+    try (PrintWriter out = new PrintWriter(new FileWriter(finalDir))) {
       out.println("Index,Server To Fan Delay(ms)");
 
       double sum = 0;
       double max = 0;
-      int index = 0;
+      int sampleCnt = 0;
 
       // Queue에서 하나씩 꺼내며 계산 및 기록
       for (Double delay : delayResults) {
-        out.println(index++ + "," + delay);
+        out.println(sampleCnt++ + "," + delay);
         sum += delay;
         if (delay > max) max = delay;
       }
 
-      double avg = (double) sum / index;
+      // 표준편차 계산
+      double dev = 0.0;
+      double avg = (double) sum / sampleCnt;
+      for(Double delay : delayResults){
+          dev += Math.pow(delay - avg, 2);
+      }
+      double stdDev = Math.sqrt(dev/sampleCnt);
 
       out.println("-------------------------");
-      out.println("Total Samples: " + index);
+      out.println("Total Samples: " + sampleCnt);
       out.println("Average Delay: " + String.format("%.2f", avg) + "ms");
+      out.println("Std Deviation: " + String.format("%.2f", stdDev) + "ms");
       out.println("Max Delay: " + max + "ms");
 
-      System.out.println(">>> [성공] 저장이 완료되었습니다. (평균 지연: " + String.format("%.2f", avg) + "ms)");
+      System.out.println(">>> [성공] 저장이 완료되었습니다");
+        System.out.println("평균 지연: " + String.format("%.2f", avg) + "ms");
+        System.out.println("표준 편차: " + String.format("%.2f", stdDev) + "ms");
+        System.out.println("최댓값 : " + String.format("%.2f", max) + "ms");
       System.out.println(">>> 이제 프로그램을 종료해도 좋습니다.");
     } catch (IOException e) {
       System.err.println("파일 저장 중 오류 발생: " + e.getMessage());
