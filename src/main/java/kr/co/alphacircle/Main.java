@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Scanner;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -45,6 +46,22 @@ public class Main {
         System.out.println("AWS 환경 테스트용 명령어");
         System.out.println("\tjava -jar fan.jar 1000 ws://192.168.50.202:8080/gs-guide-websocket java unix");
         return;
+    }
+
+    try (Scanner scanner = new Scanner(System.in)) {
+      System.out.println("Fan Generator is ready.");
+      System.out.println("Type 'start' and press Enter to connect clients.");
+
+      while (true) {
+        System.out.print("> ");
+        String command = scanner.nextLine().trim();
+
+        if ("start".equalsIgnoreCase(command)) {
+          break;
+        }
+
+        System.out.println("Unknown command. Type 'start' to begin.");
+      }
     }
 
     System.out.println(">>> 테스트 시작: " + fanCount + " fans / " + targetUrl);
