@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Map;
 import java.util.Scanner;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -71,6 +72,12 @@ public class Main {
       Thread.ofVirtual().start(() -> {
         try {
           StandardWebSocketClient client = new StandardWebSocketClient();
+
+          client.setUserProperties(Map.of(
+              "org.apache.tomcat.websocket.IO_TIMEOUT_MS",
+              "30000"
+          ));
+
           WebSocketStompClient stompClient = new WebSocketStompClient(client);
           stompClient.setMessageConverter(new StringMessageConverter());
 
