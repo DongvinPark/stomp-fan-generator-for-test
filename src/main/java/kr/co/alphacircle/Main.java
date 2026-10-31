@@ -84,7 +84,7 @@ public class Main {
       });
 
       // Thundering Herd 방지용 간격
-      if (i > 0 && i % 100 == 0) Thread.sleep(50);
+      if (i > 0 && i % 100 == 0) Thread.sleep(10);
     }
 
     // 결과 저장 감시 스레드
