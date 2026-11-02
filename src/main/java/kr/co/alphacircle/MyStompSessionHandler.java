@@ -108,7 +108,9 @@ public class MyStompSessionHandler extends StompSessionHandlerAdapter {
 
         double serverToFanDelay = now - serverSendTime;
 
+        // 결과 기록.
         Main.delayResults.add(serverToFanDelay);
+        Main.collectedCount.incrementAndGet();
 
         // 여기 출력도 생략한다. 이미 여러번 테스트 해보면서 검증된 부분이다.
         /*if (fanId % 100 == 0) {
