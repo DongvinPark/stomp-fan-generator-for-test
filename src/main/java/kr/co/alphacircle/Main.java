@@ -66,21 +66,18 @@ public class Main {
     }
 
     System.out.println(">>> 테스트 시작: " + fanCount + " fans / " + targetUrl);
+    StandardWebSocketClient client = new StandardWebSocketClient();
+    client.setUserProperties(Map.of(
+        "org.apache.tomcat.websocket.IO_TIMEOUT_MS",
+        "30000"
+    ));
+    WebSocketStompClient stompClient = new WebSocketStompClient(client);
+    stompClient.setMessageConverter(new StringMessageConverter());
 
     for (int i = 0; i < fanCount; i++) {
       int fanId = i;
       Thread.ofVirtual().start(() -> {
         try {
-          StandardWebSocketClient client = new StandardWebSocketClient();
-
-          client.setUserProperties(Map.of(
-              "org.apache.tomcat.websocket.IO_TIMEOUT_MS",
-              "30000"
-          ));
-
-          WebSocketStompClient stompClient = new WebSocketStompClient(client);
-          stompClient.setMessageConverter(new StringMessageConverter());
-
           // 핸들러에 총 팬 수를 넘겨 수집 상태를 확인하게 함
           stompClient.connectAsync(targetUrl, new MyStompSessionHandler(fanId, fanCount));
 
@@ -140,6 +137,7 @@ public class Main {
 
       double sum = 0;
       double max = 0;
+      double min = Double.MAX_VALUE;
       int sampleCnt = 0;
 
       // Queue에서 하나씩 꺼내며 계산 및 기록
@@ -147,6 +145,7 @@ public class Main {
         out.println(sampleCnt++ + "," + delay);
         sum += delay;
         if (delay > max) max = delay;
+        if (delay < min) min = delay;
       }
 
       // 표준편차 계산
@@ -162,11 +161,13 @@ public class Main {
       out.println("Average Delay: " + String.format("%.2f", avg) + "ms");
       out.println("Std Deviation: " + String.format("%.2f", stdDev) + "ms");
       out.println("Max Delay: " + max + "ms");
+      out.println("Min Delay: " + min + "ms");
 
       System.out.println(">>> [성공] 저장이 완료되었습니다");
         System.out.println("평균 지연: " + String.format("%.2f", avg) + "ms");
         System.out.println("표준 편차: " + String.format("%.2f", stdDev) + "ms");
         System.out.println("최댓값 : " + String.format("%.2f", max) + "ms");
+        System.out.println("최솟값 : " + String.format("%.2f", min) + "ms");
       System.out.println(">>> 이제 프로그램을 종료해도 좋습니다.");
     } catch (IOException e) {
       System.err.println("파일 저장 중 오류 발생: " + e.getMessage());
