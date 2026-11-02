@@ -73,7 +73,7 @@ public class MyStompSessionHandler extends StompSessionHandlerAdapter {
   @Override
   public void handleFrame(StompHeaders headers, Object payload) {
       // 수신 완료 시각부터 먼저 기록한다.
-      Instant now = Instant.now();
+      Long now = System.currentTimeMillis();
 
     // 1. STOMP 메시지 수신 여부부터 확인 : 출력은 생략한다.
     /*System.out.printf(
@@ -93,36 +93,22 @@ public class MyStompSessionHandler extends StompSessionHandlerAdapter {
           rawJson
       );*/
 
-      Map<String, Object> content =
-          objectMapper.readValue(rawJson, Map.class);
+      // Object Mapper 같은 거 쓰지 않고 직접 찾아낸다.
+      long serverSendTime = extractServerSendTime(rawJson);
 
-      String clientSendTimeStr =
-          (String) content.get("clientSendTime");
-      String serverSendTimeStr =
-          (String) content.get("serverSendTime");
-
-
-      // 3. 기존 지연 시간 측정 로직
-      if (clientSendTimeStr != null && serverSendTimeStr != null) {
+      // 3. 기존 지연 시간 측정 로직 : 불필요한건 측정하지 않는다.
+      if (/*clientSendTimeStr != null && */serverSendTime > 0L) {
 
           // 미사용 데이터는 계산을 생략한다.
         //Instant artistSendTime = Instant.parse(clientSendTimeStr);
-
-          Instant serverSendTime = Instant.parse(serverSendTimeStr);
 
         // 미사용 데이터는 계산 생략.
         /*double totalDelay =
             Duration.between(artistSendTime, now).toNanos() / 1_000_000.0;*/
 
-        double serverToFanDelay =
-            Duration.between(serverSendTime, now).toNanos() / 1_000_000.0;
-
-          // 미사용 데이터는 계산 생략.
-        /*double artistToServerDelay =
-            Duration.between(artistSendTime, serverSendTime).toNanos() / 1_000_000.0;*/
+        double serverToFanDelay = now - serverSendTime;
 
         Main.delayResults.add(serverToFanDelay);
-        int current = Main.collectedCount.incrementAndGet();
 
         // 여기 출력도 생략한다. 이미 여러번 테스트 해보면서 검증된 부분이다.
         /*if (fanId % 100 == 0) {
@@ -139,10 +125,9 @@ public class MyStompSessionHandler extends StompSessionHandlerAdapter {
         }*/
       } else {
         System.out.printf(
-            "[Fan-%d] Missing timestamp: clientSendTime=%s, serverSendTime=%s%n",
+            "[Fan-%d] Missing timestamp: serverSendTime=%s%n",
             fanId,
-            clientSendTimeStr,
-            serverSendTimeStr
+            serverSendTime
         );
       }
     } catch (Exception e) {
@@ -153,6 +138,48 @@ public class MyStompSessionHandler extends StompSessionHandlerAdapter {
       );
       e.printStackTrace();
     }
+  }
+
+  private static long extractServerSendTime(String json) {
+    String key = "\"serverSendTime\"";
+
+    int keyIndex = json.indexOf(key);
+
+    if (keyIndex < 0) {
+      throw new IllegalArgumentException("serverSendTime not found");
+    }
+
+    int colonIndex = json.indexOf(':', keyIndex + key.length());
+
+    if (colonIndex < 0) {
+      throw new IllegalArgumentException("Invalid JSON");
+    }
+
+    int start = colonIndex + 1;
+
+    while (start < json.length()
+        && Character.isWhitespace(json.charAt(start))) {
+      start++;
+    }
+
+    boolean quoted = json.charAt(start) == '"';
+
+    if (quoted) {
+      start++;
+    }
+
+    int end = start;
+
+    while (end < json.length()
+        && Character.isDigit(json.charAt(end))) {
+      end++;
+    }
+
+    if (start == end) {
+      throw new IllegalArgumentException("Invalid serverSendTime");
+    }
+
+    return Long.parseLong(json.substring(start, end));
   }
 
 }// end of Handler class
