@@ -43,10 +43,16 @@ public class Main {
     } else {
         System.out.println("인풋 파라미터가 부족합니다. 다음 중 하나의 형식에 맞게 입력해주세요");
         System.out.println("로컬 환경 테스트용 명령어");
-        System.out.println("\tjava -jar fan.jar 1000 java window");
+        System.out.println("\tjava -jar fan.jar 1000 cpp(or java or whatever server lang) window(or mac or linux)");
         System.out.println("AWS 환경 테스트용 명령어");
-        System.out.println("\tjava -jar fan.jar 1000 ws://192.168.50.202:8080/gs-guide-websocket java unix");
+        System.out.println("\tjava -jar fan.jar 1000 ws://192.168.50.202:8080/gs-guide-websocket cpp(or java or whatever server lang) window(or mac or linux)");
         return;
+    }
+
+    if(!osType.equals("mac") && !osType.equals("window") && !osType.equals("linux")){
+      System.out.println("지원하지 않는 운영제체 입니다! : " + osType);
+      System.out.println("운영체제 타입은 window linux mac 만 가능합니다.");
+      return;
     }
 
     try (Scanner scanner = new Scanner(System.in)) {
@@ -126,7 +132,7 @@ public class Main {
     String finalDir;
     if(osType.equals("window")){
         finalDir = windowOsDir;
-    } else if(osType.equals("unix")) {
+    } else if(osType.equals("mac") || osType.equals("linux")) {
         finalDir = unixDir;
     } else {
         throw new RuntimeException("지원하지 않는 운영체제입니다! : " + osType);
